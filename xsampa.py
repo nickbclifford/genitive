@@ -1,5 +1,6 @@
 from enum import Enum
 from itertools import chain
+from collections import defaultdict
 
 # phoneme types
 vowel = ["a", "e", "i", "I\\", "o", "u"]
@@ -32,9 +33,9 @@ voiced = list(chain.from_iterable((sound, sound + "'") for sound in "bmvldnzrg")
 voiced.extend(["z`", "j", "a", "I\\", "i", "e", "o", "u"])
 
 # phoneme palatalization
-hard = [sound for sound in "p|f|b|m|v|l|I\\|t|s|t_s|d|n|z|r|a|k|s`|x|g|z`|u|o".split("|")]
+hard = [sound for sound in "p|f|b|m|v|l|I\\|t|s|t_s|d|n|z|r|a|k|s`|x|g|z`|u|o|e|i".split("|")]
 soft = [sound + "'" for sound in "pfbmvltsdnzrkgx"]
-soft.extend(["i", "e", "t_s\\", "j", "t_s'"])
+soft.extend(["t_s\\", "j", "t_s'"])
 
 
 class PhonemeType(Enum):
@@ -155,33 +156,86 @@ class WickelPhone:
 
 def tokenize_xsampa(xsampa):
     result = []
-    while xsampa:
+    index = 0
+    length = len(xsampa)
+    while index < length:
         # search for joint consonants t_s, t_s', t_s\
-        if len(xsampa) > 1:
-            if xsampa[1] == '_':
+        if length - index > 1:
+            if xsampa[index+1] == '_':
                 # search for palatalized t_s' or t_s\
-                if len(xsampa) > 3 and xsampa[3] in "'\\":
-                    result.append(xsampa[:4])
-                    xsampa = xsampa[4:]
+                if length - index > 3 and xsampa[index+3] in "'\\":
+                    result.append(xsampa[index:index+4])
+                    index += 4
                 # otherwise, extract t_s
                 else:
-                    result.append(xsampa[:3])
-                    xsampa = xsampa[3:]
+                    result.append(xsampa[index:index+3])
+                    index += 3
             # search for I\, s`, and z`, and all other palatal consonants
-            elif xsampa[1] in "`\\'":
-                result.append(xsampa[:2])
-                xsampa = xsampa[2:]
+            elif xsampa[index+1] in "`\\'":
+                result.append(xsampa[index:index+2])
+                index += 2
 
             # otherwise, just append single consonant/vowel
             else:
-                result.append(xsampa[0])
-                xsampa = xsampa[1:]
+                result.append(xsampa[index])
+                index += 1
         else:
-            result.append(xsampa)
-            xsampa = ''
+            result.append(xsampa[index])
+            index += 1
 
     return result
 
 def xsampa_to_features(xsampa):
     tokens = tokenize_xsampa(xsampa)
     return list(map(WickelFeature, tokens))
+
+# it is unclear whether k', g', x', and t_s' are phonemes in their own right
+# parameter include toggles whether to transcribe ки as /k'i/ vs. /ki/
+def cyrillic_to_xsampa(cyrillic, include=False):
+    # predefined values 
+    # dict for converting simple cyrillic letters to x-sampa
+    cyrillic_list = list('абвгдеёжзийклмнопрстуфхцчшщъьыэюя')
+    xsampa = list('abvgdeo') + ['z`'] + list('zijklmnoprstufx') + ['t_s', 't_s\\', 's`', 's`t_s\\', '', ''] + list('ieua')
+    alphabet = defaultdict(lambda: None, zip(cyrillic_list, xsampa))
+
+    # strings holding different hard/soft consonants/vowels
+    can_palatalize = "пбтдмнфвсзлр"
+    hard_sounds = "кгшжцхчщ"
+    soft_vowels = "яеиёюь"
+
+    # initialization before loop
+    result = ""
+    lowered = cyrillic.lower()
+    index = 0
+    length = len(cyrillic)
+    previous_char = " "
+
+    while index < length:
+        current_char = lowered[index]
+        # check for space
+        if current_char == " ":
+            result += " "
+        # check if current char is a palatal vowel or ь
+        elif current_char in soft_vowels:
+            # check if previous char is in can_palatalize
+            if previous_char in can_palatalize:
+                # append a ' followed by vowel in alphabet dict
+                result += "'" + alphabet[current_char]
+            elif previous_char in hard_sounds:
+                # append just the vowel in alphabet dict when following a hard sound
+                result += alphabet[current_char]
+            elif current_char == "и":
+                # append just "i" in case of и
+                result += "i"
+            else:
+                # otherwise, append j followed by vowel in alphabet dict
+                result += 'j' + alphabet[current_char]
+        else:
+            # otherwise, just append letter in alphabet dict
+            result += alphabet[current_char] or ""
+
+        previous_char = current_char
+        index += 1
+
+    return result
+
