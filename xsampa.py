@@ -239,3 +239,37 @@ def cyrillic_to_xsampa(cyrillic, include=False):
 
     return result
 
+
+feature_dict = {
+    PhonemeType.Stop: set(stop),
+    PhonemeType.Continuous: set(continuous),
+    PhonemeType.Vowel: set(vowel),
+    PhonemeManner.Oral: set(oral),
+    PhonemeManner.Nasal: set(nasal),
+    PhonemeManner.Fricative: set(fricative),
+    PhonemeManner.LiquidSemivowel: set(liquid_semi),
+    PhonemeManner.High: set(high),
+    PhonemeManner.Low: set(low),
+    PhonemePosition.Front: set(front),
+    PhonemePosition.Middle: set(middle),
+    PhonemePosition.Back: set(back),
+    PhonemeVoice.Unvoiced: set(unvoiced),
+    PhonemeVoice.Voiced: set(voiced),
+    PhonemePalatalization.Hard: set(hard),
+    PhonemePalatalization.Soft: set(soft),
+}
+
+def features_to_xsampa(features):
+    result = ""
+    for feature in features:
+        phon = feature_dict[feature.phontype]
+        manner = feature_dict[feature.manner]
+        pos = feature_dict[feature.position]
+        voice = feature_dict[feature.voice]
+        palatal = feature_dict[feature.palatal]
+
+        xsampa = phon.intersection(manner, pos, voice, palatal)
+        if xsampa:
+            result += list(xsampa)[0]
+
+    return result
