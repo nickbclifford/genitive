@@ -1,18 +1,27 @@
 from enum import Enum
 from itertools import chain
 from collections import defaultdict
+from typing import Optional
+
+import numpy as np
 
 # phoneme types
 vowel = ["a", "e", "i", "I\\", "o", "u"]
 stop = list(chain.from_iterable((sound, sound + "'") for sound in "pbtdkgmn"))
-continuous = list(chain.from_iterable((sound, sound + "'") for sound in "f|v|l|s|z|r|t_s|x".split("|")))
+continuous = list(
+    chain.from_iterable(
+        (sound, sound + "'") for sound in "f|v|l|s|z|r|t_s|x".split("|")
+    )
+)
 continuous.extend(["s`", "t_s\\", "z`", "j"])
 
 # phoneme manners
 high = ["I\\", "i", "u"]
 low = ["e", "a", "o"]
 nasal = list(chain.from_iterable((sound, sound + "'") for sound in "mn"))
-liquid_semi = list(chain.from_iterable((sound, sound + "'") for sound in "l|t_s|r|x".split("|")))
+liquid_semi = list(
+    chain.from_iterable((sound, sound + "'") for sound in "l|t_s|r|x".split("|"))
+)
 liquid_semi.append("j")
 fricative = list(chain.from_iterable((sound, sound + "'") for sound in "fvsz"))
 fricative.extend(["s`", "t_s\\", "z`"])
@@ -21,19 +30,26 @@ oral = list(chain.from_iterable((sound, sound + "'") for sound in "pbtdkg"))
 # phoneme positions
 front = list(chain.from_iterable((sound, sound + "'") for sound in "pbmfvl"))
 front.extend(["I\\", "i", "e"])
-middle = list(chain.from_iterable((sound, sound + "'") for sound in "t|d|n|s|z|t_s|r".split("|")))
+middle = list(
+    chain.from_iterable((sound, sound + "'") for sound in "t|d|n|s|z|t_s|r".split("|"))
+)
 middle.append("a")
 back = list(chain.from_iterable((sound, sound + "'") for sound in "kgx"))
 back.extend(["s`", "t_s\\", "z`", "j", "u", "o"])
 
 # phoneme voicedness
-unvoiced = list(chain.from_iterable((sound, sound + "'") for sound in "p|f|t|s|t_s|k|x".split("|")))
+unvoiced = list(
+    chain.from_iterable((sound, sound + "'") for sound in "p|f|t|s|t_s|k|x".split("|"))
+)
 unvoiced.extend(["s`", "t_s\\"])
 voiced = list(chain.from_iterable((sound, sound + "'") for sound in "bmvldnzrg"))
 voiced.extend(["z`", "j", "a", "I\\", "i", "e", "o", "u"])
 
 # phoneme palatalization
-hard = [sound for sound in "p|f|b|m|v|l|I\\|t|s|t_s|d|n|z|r|a|k|s`|x|g|z`|u|o|e|i".split("|")]
+hard = [
+    sound
+    for sound in "p|f|b|m|v|l|I\\|t|s|t_s|d|n|z|r|a|k|s`|x|g|z`|u|o|e|i".split("|")
+]
 soft = [sound + "'" for sound in "pfbmvltsdnzrkgx"]
 soft.extend(["t_s\\", "j", "t_s'"])
 
@@ -67,7 +83,7 @@ class PhonemeManner(Enum):
     def from_xsampa(phoneme):
         if phoneme in high:
             return PhonemeManner.High
-        
+
         if phoneme in low:
             return PhonemeManner.Low
 
@@ -103,6 +119,7 @@ class PhonemePosition(Enum):
 
         return None
 
+
 class PhonemeVoice(Enum):
     Unvoiced = 0
     Voiced = 1
@@ -110,11 +127,12 @@ class PhonemeVoice(Enum):
     def from_xsampa(phoneme):
         if phoneme in unvoiced:
             return PhonemeVoice.Unvoiced
-        
+
         if phoneme in voiced:
             return PhonemeVoice.Voiced
-        
+
         return None
+
 
 class PhonemePalatalization(Enum):
     Hard = 0
@@ -129,50 +147,86 @@ class PhonemePalatalization(Enum):
 
         return None
 
-class WickelFeature:
-    def __init__(self, phoneme, boundary=False):
-        if not boundary:
-            self.phontype = PhonemeType.from_xsampa(phoneme)
-            self.manner = PhonemeManner.from_xsampa(phoneme)
-            self.position = PhonemePosition.from_xsampa(phoneme)
-            self.voice = PhonemeVoice.from_xsampa(phoneme)
-            self.palatal = PhonemePalatalization.from_xsampa(phoneme)
-            self.boundary = False
+
+class WordBoundary(Enum):
+    Phone = 0
+    Boundary = 1
+
+
+class SegmentFeatures:
+    phontype = None
+    manner = None
+    position = None
+    voice = None
+    palatal = None
+    boundary = WordBoundary.Phone
+
+    def __init__(self, segment):
+        if segment == "#":
+            self.boundary = WordBoundary.Boundary
         else:
-            self.phontype = None
-            self.manner = None
-            self.position = None
-            self.voice = None
-            self.palatal = None
-            self.boundary = True
+            self.phontype = PhonemeType.from_xsampa(segment)
+            self.manner = PhonemeManner.from_xsampa(segment)
+            self.position = PhonemePosition.from_xsampa(segment)
+            self.voice = PhonemeVoice.from_xsampa(segment)
+            self.palatal = PhonemePalatalization.from_xsampa(segment)
+
+    def __iter__(self):
+        if self.boundary == WordBoundary.Boundary:
+            yield self.boundary
+        else:
+            yield self.phontype
+            yield self.manner
+            yield self.position
+            yield self.voice
+            yield self.palatal
 
     def __str__(self):
-        return f'Type: {self.phontype}\nManner: {self.manner}\nPosition: {self.position}\nVoice: {self.voice}\nPalatalization: {self.palatal}\nBoundary: {self.boundary}'
+        return f"Type: {self.phontype}\nManner: {self.manner}\nPosition: {self.position}\nVoice: {self.voice}\nPalatalization: {self.palatal}\nBoundary: {self.boundary}"
+
 
 class WickelPhone:
-    def __init__(self, first, second, third):
+    def __init__(self, first: str, second: str, third: str):
         self.phones = [first, second, third]
 
+    def __str__(self):
+        return "{" + self.phones[0] + "}" + self.phones[1] + "{" + self.phones[2] + "}"
 
-def tokenize_xsampa(xsampa):
+    def activating_features(self):
+        pre, central, post = [np.array(list(SegmentFeatures(p))) for p in self.phones]
+
+        dimensions = 5
+
+        cols = np.array(
+            [
+                np.tile(pre, (dimensions * dimensions) // len(pre)),
+                np.repeat(central, dimensions),
+                np.tile(post, (dimensions * dimensions) // len(post)),
+            ]
+        )
+
+        return np.transpose(cols)
+
+
+def tokenize_xsampa(xsampa: str) -> list[str]:
     result = []
     index = 0
     length = len(xsampa)
     while index < length:
         # search for joint consonants t_s, t_s', t_s\
         if length - index > 1:
-            if xsampa[index+1] == '_':
+            if xsampa[index + 1] == "_":
                 # search for palatalized t_s' or t_s\
-                if length - index > 3 and xsampa[index+3] in "'\\":
-                    result.append(xsampa[index:index+4])
+                if length - index > 3 and xsampa[index + 3] in "'\\":
+                    result.append(xsampa[index : index + 4])
                     index += 4
                 # otherwise, extract t_s
                 else:
-                    result.append(xsampa[index:index+3])
+                    result.append(xsampa[index : index + 3])
                     index += 3
             # search for I\, s`, and z`, and all other palatal consonants
-            elif xsampa[index+1] in "`\\'":
-                result.append(xsampa[index:index+2])
+            elif xsampa[index + 1] in "`\\'":
+                result.append(xsampa[index : index + 2])
                 index += 2
 
             # otherwise, just append single consonant/vowel
@@ -185,17 +239,29 @@ def tokenize_xsampa(xsampa):
 
     return result
 
-def xsampa_to_features(xsampa):
+
+def xsampa_to_phones(xsampa: str):
     tokens = tokenize_xsampa(xsampa)
-    return list(map(WickelFeature, tokens))
+    tokens = ["#", *tokens, "#"]
+
+    window_size = 3
+    for i in range(len(tokens) - window_size + 1):
+        yield WickelPhone(tokens[i : i + window_size])
+
 
 # it is unclear whether k', g', x', and t_s' are phonemes in their own right
 # parameter include toggles whether to transcribe ки as /k'i/ vs. /ki/
-def cyrillic_to_xsampa(cyrillic, include=False):
-    # predefined values 
+def cyrillic_to_xsampa(cyrillic: str, include=False):
+    # predefined values
     # dict for converting simple cyrillic letters to x-sampa
-    cyrillic_list = list('абвгдеёжзийклмнопрстуфхцчшщъьыэюя')
-    xsampa = list('abvgdeo') + ['z`'] + list('zijklmnoprstufx') + ['t_s', 't_s\\', 's`', 's`t_s\\', '', ''] + list('ieua')
+    cyrillic_list = list("абвгдеёжзийклмнопрстуфхцчшщъьыэюя")
+    xsampa = (
+        list("abvgdeo")
+        + ["z`"]
+        + list("zijklmnoprstufx")
+        + ["t_s", "t_s\\", "s`", "s`t_s\\", "", ""]
+        + list("ieua")
+    )
     alphabet = defaultdict(lambda: None, zip(cyrillic_list, xsampa))
 
     # strings holding different hard/soft consonants/vowels
@@ -229,7 +295,7 @@ def cyrillic_to_xsampa(cyrillic, include=False):
                 result += "i"
             else:
                 # otherwise, append j followed by vowel in alphabet dict
-                result += 'j' + alphabet[current_char]
+                result += "j" + alphabet[current_char]
         else:
             # otherwise, just append letter in alphabet dict
             result += alphabet[current_char] or ""
@@ -259,7 +325,8 @@ feature_dict = {
     PhonemePalatalization.Soft: set(soft),
 }
 
-def features_to_xsampa(features):
+
+def features_to_xsampa(features: list[SegmentFeatures]):
     result = ""
     for feature in features:
         phon = feature_dict[feature.phontype]
