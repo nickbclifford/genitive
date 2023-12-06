@@ -73,31 +73,15 @@ class PhonemeType(Enum):
 
 
 class PhonemeManner(Enum):
-    Oral = 0
-    Nasal = 1
-    Fricative = 2
-    LiquidSemivowel = 3
-    High = 4
-    Low = 5
+    OralFricativeHigh = 0
+    NasalLiquidSemiLow = 1
 
     def from_xsampa(phoneme):
-        if phoneme in high:
-            return PhonemeManner.High
-
-        if phoneme in low:
-            return PhonemeManner.Low
-
-        if phoneme in nasal:
-            return PhonemeManner.Nasal
-
-        if phoneme in liquid_semi:
-            return PhonemeManner.LiquidSemivowel
-
-        if phoneme in fricative:
-            return PhonemeManner.Fricative
-
-        if phoneme in oral:
-            return PhonemeManner.Oral
+        if phoneme in high or phoneme in fricative or phoneme in oral:
+            return PhonemeManner.OralFricativeHigh
+        
+        if phoneme in low or phoneme in nasal or phoneme in liquid_semi:
+            return PhonemeManner.NasalLiquidSemiLow
 
         return None
 
@@ -246,7 +230,7 @@ def xsampa_to_phones(xsampa: str):
 
     window_size = 3
     for i in range(len(tokens) - window_size + 1):
-        yield WickelPhone(tokens[i : i + window_size])
+        yield WickelPhone(*tokens[i : i + window_size])
 
 
 # it is unclear whether k', g', x', and t_s' are phonemes in their own right
@@ -310,12 +294,8 @@ feature_dict = {
     PhonemeType.Stop: set(stop),
     PhonemeType.Continuous: set(continuous),
     PhonemeType.Vowel: set(vowel),
-    PhonemeManner.Oral: set(oral),
-    PhonemeManner.Nasal: set(nasal),
-    PhonemeManner.Fricative: set(fricative),
-    PhonemeManner.LiquidSemivowel: set(liquid_semi),
-    PhonemeManner.High: set(high),
-    PhonemeManner.Low: set(low),
+    PhonemeManner.OralFricativeHigh: set(oral).union(set(fricative), set(high)),
+    PhonemeManner.NasalLiquidSemiLow: set(nasal).union(set(liquid_semi), set(low)),
     PhonemePosition.Front: set(front),
     PhonemePosition.Middle: set(middle),
     PhonemePosition.Back: set(back),
@@ -340,3 +320,13 @@ def features_to_xsampa(features: list[SegmentFeatures]):
             result += list(xsampa)[0]
 
     return result
+
+
+if __name__ == "__main__":
+    np.set_printoptions(linewidth=80, formatter={
+        'object': (lambda e: e.name)
+    })
+    xsampa = cyrillic_to_xsampa("язы́к")
+    for wp in xsampa_to_phones(xsampa):
+        print(f"-- activated features for Wickelphone {wp} --")
+        print(wp.activating_features())
