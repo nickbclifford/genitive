@@ -1,5 +1,6 @@
 import asyncio
 import csv
+import re
 
 import aiohttp
 from bs4 import BeautifulSoup
@@ -10,6 +11,12 @@ WIKI_API = "https://en.wiktionary.org/w/api.php"
 # API only allows sizes between 1-500
 BATCH_SIZE = 500
 
+# only allow modern Russian Cyrillic characters
+# this also filters out whitespace to avoid compound words with adjectives that also decline
+ALLOWED_TITLES = re.compile(
+    r"^[АаБбВвГгДдЕеЁёЖжЗзИиЙйКкЛлМмНнОоПпРрСсТтУуФфХхЦцЧчШшЩщЪъЫыЬьЭэЮюЯя]+$",
+)
+
 
 async def get_declensions(session: aiohttp.ClientSession, title):
     async with session.get(f"{RENDER_API}/{title}") as response:
@@ -17,8 +24,19 @@ async def get_declensions(session: aiohttp.ClientSession, title):
 
         ru_section = tree.select_one("section:has(#Russian)")
 
-        gen_sg = ru_section.select_one(".gen\|s-form-of").text
-        gen_pl = ru_section.select_one(".gen\|p-form-of").text
+        gen_sg = ru_section.select_one(".gen\|s-form-of")
+        if gen_sg:
+            gen_sg = gen_sg.text
+        else:
+            # no genitive means it's indeclinable
+            return None
+
+        gen_pl = ru_section.select_one(".gen\|p-form-of")
+        if gen_pl:
+            gen_pl = gen_pl.text
+        else:
+            # ditto
+            return None
 
         return (gen_sg, gen_pl)
 
@@ -39,9 +57,10 @@ def get_nouns():
 
         for member in data["query"]["categorymembers"]:
             word = member["title"]
-            # don't show subcategories, we only want full word pages
-            if ":" not in word:
+            if ALLOWED_TITLES.fullmatch(word):
                 yield word
+            else:
+                print(f"skipping complex word {word}")
 
         if continuation := data.get("continue"):
             params["cmcontinue"] = continuation["cmcontinue"]
@@ -51,9 +70,12 @@ def get_nouns():
 
 async def noun_data(session, noun):
     try:
-        sg, pl = await get_declensions(session, noun)
-        print(f"parsed page for {noun}")
-        return [noun, sg, pl]
+        decl = await get_declensions(session, noun)
+        if decl:
+            print(f"parsed page for {noun}")
+            return [noun, *decl]
+        else:
+            print(f"skipped indeclinable {noun}")
     except:
         return None
 
@@ -68,7 +90,9 @@ async def main():
     with open("declensions.csv", "w") as file:
         writer = csv.writer(file)
         writer.writerow(["title", "gen_sg", "gen_pl"])
-        writer.writerows(row for row in result if row)  # filter out errors that became None
+        writer.writerows(
+            row for row in result if row
+        )  # filter out errors that became None
 
 
 if __name__ == "__main__":
