@@ -1,7 +1,6 @@
 from enum import Enum
 from itertools import chain
 from collections import defaultdict
-from typing import Optional
 
 import numpy as np
 
