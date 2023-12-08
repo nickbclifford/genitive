@@ -1,53 +1,38 @@
 import csv
-import itertools
-import random
+import json
+import os.path
 
 import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
 
-from xsampa import (
-    PhonemeManner,
-    PhonemePalatalization,
-    PhonemePosition,
-    PhonemeType,
-    PhonemeVoice,
-    WordBoundary,
-    cyrillic_to_xsampa,
-    tokenize_xsampa,
-    xsampa_to_phones,
-)
+from xsampa import cyrillic_to_xsampa
+from wickel import WickelPhone, xsampa_to_phones, wickelfeatures, feature_index_map
 
 
-all_features = [
-    *PhonemeType,
-    *PhonemeManner,
-    *PhonemePosition,
-    *PhonemeVoice,
-    *PhonemePalatalization,
-]
-with_boundary = all_features + [WordBoundary.Boundary]
+def activations_for_phone(phone: WickelPhone):
+    activations = np.zeros(len(wickelfeatures), dtype=np.bool_)
+
+    for feature in phone.activating_features():
+        # TODO: this is probably vectorizable somehow
+        for blurred in feature.blur():
+            # we might have blurred into a feature we're not checking for
+            if index := feature_index_map.get(blurred.encode()):
+                activations[index] = True
+
+    return activations
 
 
-def all_wickelfeatures():
-    for pre, central, post in itertools.product(
-        with_boundary, all_features, with_boundary
-    ):
-        feature = np.array([pre, central, post])
+def activations_for_word(phones: list[WickelPhone]):
+    activations = np.zeros(len(wickelfeatures), dtype=np.bool_)
 
-        if (
-            pre == WordBoundary.Boundary
-            or post == WordBoundary.Boundary
-            or type(pre) is type(post)
-        ):
-            yield feature
+    for phone in phones:
+        activations = np.bitwise_or(activations, activations_for_phone(phone))
+
+    return activations.astype(np.float32)
 
 
-wickelfeatures = list(all_wickelfeatures())
-
-
-# TODO: it'd be nice if we could reuse this class for the one-model-two-cases output
 class Net(nn.Module):
     def __init__(self, output_multiplier=1):
         super(Net, self).__init__()
@@ -55,6 +40,7 @@ class Net(nn.Module):
         self.layer = nn.Linear(
             in_features=len(wickelfeatures),
             out_features=output_multiplier * len(wickelfeatures),
+            bias=True,
         )
         self.activation = nn.Sigmoid()
 
@@ -66,6 +52,7 @@ class Net(nn.Module):
 
 net_gen_sg = Net()
 net_gen_pl = Net()
+net_both = Net(output_multiplier=2)
 
 loss_criterion = nn.L1Loss()
 
@@ -85,37 +72,75 @@ def run_training(model, mapping_pairs, num_epochs):
             loss.backward()
             optimizer.step()
 
+        print(f"loss at epoch {epoch}: {loss.item():.6f}")
 
 def build_word_data():
+    if not os.path.exists("declensions.csv"):
+        import scraper
+        import asyncio
+
+        asyncio.run(scraper.main())
+
     with open("declensions.csv") as file:
         for row in csv.DictReader(file):
             yield (
+                row["title"],
                 xsampa_to_phones(cyrillic_to_xsampa(row["title"])),
                 xsampa_to_phones(cyrillic_to_xsampa(row["gen_sg"])),
                 xsampa_to_phones(cyrillic_to_xsampa(row["gen_pl"])),
             )
 
 
-# TODO: build activation patterns for individual words
-# turn into mapping pairs of activations over *all* wickelfeatures
+def build_activations():
+    if os.path.exists("activations.json"):
+        print("using cached activations")
+        with open("activations.json") as f:
+            words = json.load(f)
+    else:
+        print("building word activations")
+        words = {}
+        for word, nom, sg, pl in build_word_data():
+            nom_act = activations_for_word(nom)
+            sg_act = activations_for_word(sg)
+            pl_act = activations_for_word(pl)
 
+            print(f"built activations for {word}")
 
-BLUR_PROBABILILTY = 0.9
+            words[word] = {
+                "nom_sg": nom_act.tolist(),
+                "gen_sg": sg_act.tolist(),
+                "gen_pl": pl_act.tolist(),
+            }
+        with open("activations.json", "w") as f:
+            json.dump(words, f)
 
-
-def blur_wickelfeature(feature):
-    yield feature
-
-    for pre in random.sample(with_boundary, random.randint(0, len(with_boundary))):
-        if random.random() > BLUR_PROBABILILTY:
-            yield np.array([pre, feature[1], feature[2]])
-
-    for post in random.sample(with_boundary, random.randint(0, len(with_boundary))):
-        if random.random() > BLUR_PROBABILILTY:
-            yield np.array([feature[0], feature[1], post])
+    for acts in words.values():
+        yield torch.FloatTensor(acts["nom_sg"]), torch.FloatTensor(
+            acts["gen_sg"]
+        ), torch.FloatTensor(acts["gen_pl"])
 
 
 if __name__ == "__main__":
-    np.set_printoptions(linewidth=80, formatter={"object": (lambda e: e.name)})
-    for feature in all_wickelfeatures():
-        print(feature)
+    sg_maps = []
+    pl_maps = []
+    both_maps = []
+
+    for nom_act, sg_act, pl_act in build_activations():
+        sg_maps.append((nom_act, sg_act))
+        pl_maps.append((nom_act, pl_act))
+        both_maps.append((nom_act, torch.cat((sg_act, pl_act))))
+
+    print("beginning training...")
+    run_training(net_gen_sg, sg_maps, 10)
+    print("trained singular model")
+    run_training(net_gen_pl, pl_maps, 10)
+    print("trained plural model")
+    run_training(net_both, both_maps, 10)
+    print("trained dual model")
+
+    test_word = "язык"
+    test_input = torch.from_numpy(activations_for_word(xsampa_to_phones(cyrillic_to_xsampa(test_word))))
+
+    print("Singular model output:", net_gen_sg(test_input))
+    print("Plural model output:", net_gen_pl(test_input))
+    print("Dual model output:", net_both(test_input))

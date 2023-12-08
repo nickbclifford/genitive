@@ -2,8 +2,6 @@ from enum import Enum
 from itertools import chain
 from collections import defaultdict
 
-import numpy as np
-
 # phoneme types
 vowel = ["a", "e", "i", "I\\", "o", "u"]
 stop = list(chain.from_iterable((sound, sound + "'") for sound in "pbtdkgmn"))
@@ -136,61 +134,6 @@ class WordBoundary(Enum):
     Boundary = 1
 
 
-class SegmentFeatures:
-    phontype = None
-    manner = None
-    position = None
-    voice = None
-    palatal = None
-    boundary = WordBoundary.Phone
-
-    def __init__(self, segment):
-        if segment == "#":
-            self.boundary = WordBoundary.Boundary
-        else:
-            self.phontype = PhonemeType.from_xsampa(segment)
-            self.manner = PhonemeManner.from_xsampa(segment)
-            self.position = PhonemePosition.from_xsampa(segment)
-            self.voice = PhonemeVoice.from_xsampa(segment)
-            self.palatal = PhonemePalatalization.from_xsampa(segment)
-
-    def __iter__(self):
-        if self.boundary == WordBoundary.Boundary:
-            yield self.boundary
-        else:
-            yield self.phontype
-            yield self.manner
-            yield self.position
-            yield self.voice
-            yield self.palatal
-
-    def __str__(self):
-        return f"Type: {self.phontype}\nManner: {self.manner}\nPosition: {self.position}\nVoice: {self.voice}\nPalatalization: {self.palatal}\nBoundary: {self.boundary}"
-
-
-class WickelPhone:
-    def __init__(self, first: str, second: str, third: str):
-        self.phones = [first, second, third]
-
-    def __str__(self):
-        return "{" + self.phones[0] + "}" + self.phones[1] + "{" + self.phones[2] + "}"
-
-    def activating_features(self):
-        pre, central, post = [np.array(list(SegmentFeatures(p))) for p in self.phones]
-
-        dimensions = 5
-
-        cols = np.array(
-            [
-                np.tile(pre, (dimensions * dimensions) // len(pre)),
-                np.repeat(central, dimensions),
-                np.tile(post, (dimensions * dimensions) // len(post)),
-            ]
-        )
-
-        return np.transpose(cols)
-
-
 def tokenize_xsampa(xsampa: str) -> list[str]:
     result = []
     index = 0
@@ -221,15 +164,6 @@ def tokenize_xsampa(xsampa: str) -> list[str]:
             index += 1
 
     return result
-
-
-def xsampa_to_phones(xsampa: str):
-    tokens = tokenize_xsampa(xsampa)
-    tokens = ["#", *tokens, "#"]
-
-    window_size = 3
-    for i in range(len(tokens) - window_size + 1):
-        yield WickelPhone(*tokens[i : i + window_size])
 
 
 # it is unclear whether k', g', x', and t_s' are phonemes in their own right
@@ -303,29 +237,3 @@ feature_dict = {
     PhonemePalatalization.Hard: set(hard),
     PhonemePalatalization.Soft: set(soft),
 }
-
-
-def features_to_xsampa(features: list[SegmentFeatures]):
-    result = ""
-    for feature in features:
-        phon = feature_dict[feature.phontype]
-        manner = feature_dict[feature.manner]
-        pos = feature_dict[feature.position]
-        voice = feature_dict[feature.voice]
-        palatal = feature_dict[feature.palatal]
-
-        xsampa = phon.intersection(manner, pos, voice, palatal)
-        if xsampa:
-            result += list(xsampa)[0]
-
-    return result
-
-
-if __name__ == "__main__":
-    np.set_printoptions(linewidth=80, formatter={
-        'object': (lambda e: e.name)
-    })
-    xsampa = cyrillic_to_xsampa("язы́к")
-    for wp in xsampa_to_phones(xsampa):
-        print(f"-- activated features for Wickelphone {wp} --")
-        print(wp.activating_features())

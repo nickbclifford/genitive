@@ -1,0 +1,2 @@
+activations.json filter=lfs diff=lfs merge=lfs -text
+declensions.csv filter=lfs diff=lfs merge=lfs -text
