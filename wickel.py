@@ -1,5 +1,7 @@
+import csv
 import itertools
 import random
+import os.path
 
 import numpy as np
 
@@ -10,6 +12,7 @@ from xsampa import (
     PhonemeType,
     PhonemeVoice,
     WordBoundary,
+    cyrillic_to_xsampa,
     tokenize_xsampa,
     feature_dict,
 )
@@ -118,6 +121,15 @@ class WickelFeature:
             if random.random() > BLUR_PROBABILILTY:
                 yield WickelFeature(self.features[0], self.features[1], post)
 
+    def __repr__(self):
+        return "<" + ", ".join(f.name for f in self.features) + ">"
+
+    def __hash__(self):
+        return self.encode()
+    
+    def __eq__(self, other):
+        return hash(self) == hash(other)
+
     def encode(self):
         pre, central, post = [encode_feature(f) for f in self.features]
         return (pre << 16) | (central << 8) | post
@@ -146,14 +158,23 @@ def all_wickelfeatures():
 
 
 wickelfeatures = list(all_wickelfeatures())
-feature_index_map = {f.encode(): i for i, f in enumerate(wickelfeatures)}
+feature_index_map = {f: i for i, f in enumerate(wickelfeatures)}
 
 
 class WickelPhone:
     def __init__(self, first: str, second: str, third: str):
         self.phones = [first, second, third]
 
+    def __hash__(self):
+        return hash(self.__repr__())
+    
+    def __eq__(self, other):
+        return hash(self) == hash(other)
+    
     def __str__(self):
+        return self.__repr__()
+
+    def __repr__(self):
         return "{" + self.phones[0] + "}" + self.phones[1] + "{" + self.phones[2] + "}"
 
     def activating_features(self):
@@ -171,6 +192,33 @@ class WickelPhone:
 
         for vec in np.transpose(cols):
             yield WickelFeature(*vec)
+
+    def filtered_activations(self):
+        for feature in self.activating_features():
+            pre, _, post = feature.features
+            if (
+                pre == WordBoundary.Boundary
+                or post == WordBoundary.Boundary
+                or type(pre) is type(post)
+            ):
+                yield feature
+
+
+def build_word_data():
+    if not os.path.exists("declensions.csv"):
+        import scraper
+        import asyncio
+
+        asyncio.run(scraper.main())
+
+    with open("declensions.csv") as file:
+        for row in csv.DictReader(file):
+            yield (
+                row["title"],
+                xsampa_to_phones(cyrillic_to_xsampa(row["title"])),
+                xsampa_to_phones(cyrillic_to_xsampa(row["gen_sg"])),
+                xsampa_to_phones(cyrillic_to_xsampa(row["gen_pl"])),
+            )
 
 
 def xsampa_to_phones(xsampa: str):

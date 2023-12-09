@@ -1,4 +1,3 @@
-import csv
 import json
 import os.path
 
@@ -8,7 +7,7 @@ import torch.nn as nn
 import torch.optim as optim
 
 from xsampa import cyrillic_to_xsampa
-from wickel import WickelPhone, xsampa_to_phones, wickelfeatures, feature_index_map
+from wickel import WickelPhone, xsampa_to_phones, wickelfeatures, feature_index_map, build_word_data
 
 
 def activations_for_phone(phone: WickelPhone):
@@ -18,7 +17,7 @@ def activations_for_phone(phone: WickelPhone):
         # TODO: this is probably vectorizable somehow
         for blurred in feature.blur():
             # we might have blurred into a feature we're not checking for
-            if index := feature_index_map.get(blurred.encode()):
+            if index := feature_index_map.get(blurred):
                 activations[index] = True
 
     return activations
@@ -74,22 +73,6 @@ def run_training(model, mapping_pairs, num_epochs):
 
         print(f"loss at epoch {epoch}: {loss.item():.6f}")
 
-def build_word_data():
-    if not os.path.exists("declensions.csv"):
-        import scraper
-        import asyncio
-
-        asyncio.run(scraper.main())
-
-    with open("declensions.csv") as file:
-        for row in csv.DictReader(file):
-            yield (
-                row["title"],
-                xsampa_to_phones(cyrillic_to_xsampa(row["title"])),
-                xsampa_to_phones(cyrillic_to_xsampa(row["gen_sg"])),
-                xsampa_to_phones(cyrillic_to_xsampa(row["gen_pl"])),
-            )
-
 
 def build_activations():
     if os.path.exists("activations.json"):
@@ -141,6 +124,18 @@ if __name__ == "__main__":
     test_word = "язык"
     test_input = torch.from_numpy(activations_for_word(xsampa_to_phones(cyrillic_to_xsampa(test_word))))
 
-    print("Singular model output:", net_gen_sg(test_input))
-    print("Plural model output:", net_gen_pl(test_input))
-    print("Dual model output:", net_both(test_input))
+    predicted_sg = net_gen_sg(test_input)
+    print("Singular model output:", predicted_sg)
+    predicted_pl = net_gen_pl(test_input)
+    print("Plural model output:", predicted_pl)
+    predicted_both = net_both(test_input)
+    print("Dual model output:", predicted_both)
+
+    both_list = predicted_both.tolist()
+    with open("predictions.json", "w") as f:
+        json.dump({
+            "sg": predicted_sg.tolist(),
+            "pl": predicted_pl.tolist(),
+            "both_sg": both_list[:len(wickelfeatures)],
+            "both_pl": both_list[len(wickelfeatures):]
+        }, f)
