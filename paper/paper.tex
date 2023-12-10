@@ -23,7 +23,7 @@
 
 \usepackage{url}
 
-%\aclfinalcopy % Uncomment this line for the final submission
+\aclfinalcopy % Uncomment this line for the final submission
 %\def\aclpaperid{***} %  Enter the acl Paper ID here
 
 %\setlength\titlebox{5cm}
@@ -36,7 +36,7 @@
 
 \newcommand{\citenp}[1]{\citeauthor{#1} (\citeyear{#1})}
 
-\title{Instructions for ACL 2019 Proceedings}
+\title{Modeling the Learning of the Russian Genitive Case}
 
 \author{George Vallejo \\
   \texttt{gavallejo02@uchicago.edu} \\\And
@@ -391,16 +391,23 @@ may have been missed.
 
 \section{Conclusion}
 
+Although we were unable to adequately test our neural network hypotheses due to the
+failure of our decoder network in converting the networks' outputs back to a phonological
+representation, we have nonetheless shown that the networks are capable of learning the
+genitive case's patterns to some extent with the Wickelphone/Wickelfeature schema described
+in this paper. Further investigation of the intended implementation of the decoder network
+could potentially demonstrate definitively whether or not the neural networks truly acquired 
+the proper formation of the genitive case, and which of the two sets of networks more closely
+models the acquisition of these cases in children with Russian as a native language.
+
+Future work in this subject matter could use our design to model learning with the other cases 
+of Russian, namely the dative, instrumental, and prepositional cases. It could also explore the
+acquisition of the different forms of adjectives, which also decline for grammatical case and
+number, or potentially the outcome of trying to learn both forms at once. All of these cases
+tend to show greater degrees of regularity compared to the genitive case, meaning that a neural network
+learning one or more of these cases is more likely to yield better results. This design
+may not suit modeling of learning the Russian accusative case, however, because the endings used in the accusative depends on whether the noun is animate (i.e. a living being) or not.
+
 \bibliography{paper}{}
 \bibliographystyle{acl_natbib}
-
-\appendix
-
-\section{Appendices}
-\label{sec:appendix}
-Appendices are material that can be read, and include lemmas, formulas, proofs, and tables that are not critical to the reading and understanding of the paper. 
-Appendices should be \textbf{uploaded as supplementary material} when submitting the paper for review. Upon acceptance, the appendices come after the references, as shown here. Use
-\verb|\appendix| before any appendix section to switch the section
-numbering over to letters. 
-
 \end{document}
