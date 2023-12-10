@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.25 (TeX Live 2023/Arch Linux) (preloaded format=pdflatex 2023.12.9)  9 DEC 2023 23:05
+This is pdfTeX, Version 3.141592653-2.6-1.40.25 (TeX Live 2023/Arch Linux) (preloaded format=pdflatex 2023.12.9)  9 DEC 2023 23:13
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -611,72 +611,82 @@ LaTeX Font Info:    Trying to load font information for U+msb on input line 49.
 
 (/usr/share/texmf-dist/tex/latex/amsfonts/umsb.fd
 File: umsb.fd 2013/01/14 v3.01 AMS symbols B
-) [1{/var/lib/texmf/fonts/map/pdftex/updmap/pdftex.map}{/usr/share/texmf-dist/f
-onts/enc/dvips/base/8r.enc}
+)
+LaTeX Font Info:    Trying to load font information for OT1+pcr on input line 7
+1.
+
+(/usr/share/texmf-dist/tex/latex/psnfss/ot1pcr.fd
+File: ot1pcr.fd 2001/06/04 font definitions for OT1/pcr.
+)
+Underfull \hbox (badness 5817) in paragraph at lines 70--72
+[]\OT1/ptm/m/n/10.95 All code writ-ten for this pa-per, in-clud-
+ []
+
+
+Underfull \hbox (badness 4872) in paragraph at lines 70--72
+\OT1/ptm/m/n/10.95 ing X-SAMPA trans-la-tion and model train-
+ []
+
+[1{/var/lib/texmf/fonts/map/pdftex/updmap/pdftex.map}{/usr/share/texmf-dist/fon
+ts/enc/dvips/base/8r.enc}
 
 
 
 ]
-Underfull \hbox (badness 1466) in paragraph at lines 138--144
+Underfull \hbox (badness 1466) in paragraph at lines 141--147
 \OT1/ptm/m/n/10.95 the noun, use the gen-i-tive form to rep-re-sent
  []
 
 LaTeX Font Info:    Trying to load font information for OMS+ptm on input line 1
-49.
+52.
 (/usr/share/texmf-dist/tex/latex/psnfss/omsptm.fd
 File: omsptm.fd 
 )
 LaTeX Font Info:    Font shape `OMS/ptm/m/n' in size <10.95> not available
-(Font)              Font shape `OMS/cmsy/m/n' tried instead on input line 149.
+(Font)              Font shape `OMS/cmsy/m/n' tried instead on input line 152.
 LaTeX Font Info:    Trying to load font information for T2A+ptm on input line 1
-61.
-LaTeX Font Info:    No file T2Aptm.fd. on input line 161.
+64.
+LaTeX Font Info:    No file T2Aptm.fd. on input line 164.
 
 
 LaTeX Font Warning: Font shape `T2A/ptm/m/n' undefined
-(Font)              using `T2A/cmr/m/n' instead on input line 161.
+(Font)              using `T2A/cmr/m/n' instead on input line 164.
 
 LaTeX Font Info:    Trying to load font information for T3+ptm on input line 18
-3.
+6.
 (/usr/share/texmf-dist/tex/latex/tipa/t3ptm.fd
 File: t3ptm.fd 2001/12/31 TIPA font definitions
 ) [2{/usr/share/texmf-dist/fonts/enc/dvips/cm-super/cm-super-t2a.enc}]
 
 LaTeX Font Warning: Font shape `T2A/ptm/b/n' undefined
-(Font)              using `T2A/ptm/m/n' instead on input line 258.
+(Font)              using `T2A/ptm/m/n' instead on input line 261.
 
 
-Underfull \hbox (badness 1546) in paragraph at lines 288--295
+Underfull \hbox (badness 1546) in paragraph at lines 291--298
 \OT1/ptm/m/n/10.95 boundary marker (which has a sin-gle unique
  []
 
 
-Underfull \hbox (badness 1286) in paragraph at lines 288--295
+Underfull \hbox (badness 1286) in paragraph at lines 291--298
 \OT1/ptm/m/n/10.95 in Ta-ble [][]2[][]. For each fea-ture in the cen-tral
  []
 
-
-Underfull \hbox (badness 2150) in paragraph at lines 296--300
+[3]
+Underfull \hbox (badness 2150) in paragraph at lines 299--303
 []\OT1/ptm/m/n/10.95 Each of these ac-ti-vated Wick-elfea-tures are
  []
 
 
-Underfull \hbox (badness 1178) in paragraph at lines 296--300
+Underfull \hbox (badness 1178) in paragraph at lines 299--303
 \OT1/ptm/m/n/10.95 all Wick-elfea-tures of the form $[]$ and
  []
 
-[3]
-Underfull \hbox (badness 4634) in paragraph at lines 301--304
+
+Underfull \hbox (badness 4634) in paragraph at lines 304--307
 []\OT1/ptm/m/n/10.95 However, to avoid com-pu-ta-tional blowup,
  []
 
-[4] (./paper.bbl)
-LaTeX Font Info:    Trying to load font information for OT1+pcr on input line 4
-00.
- (/usr/share/texmf-dist/tex/latex/psnfss/ot1pcr.fd
-File: ot1pcr.fd 2001/06/04 font definitions for OT1/pcr.
-) [5]
-(./paper.aux)
+[4] (./paper.bbl) [5] (./paper.aux)
 
 LaTeX Font Warning: Some font shapes were not available, defaults substituted.
 
@@ -691,7 +701,7 @@ Here is how much of TeX's memory you used:
  33620 multiletter control sequences out of 15000+600000
  547766 words of font info for 114 fonts, out of 8000000 for 9000
  1141 hyphenation exceptions out of 8191
- 90i,10n,90p,383b,451s stack positions out of 10000i,1000n,20000p,200000b,200000s
+ 90i,10n,90p,383b,537s stack positions out of 10000i,1000n,20000p,200000b,200000s
 </usr/share/texmf-dist/fonts
 /type1/public/amsfonts/cm/cmmi10.pfb></usr/share/texmf-dist/fonts/type1/public/
 amsfonts/cm/cmr8.pfb></usr/share/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy
@@ -702,10 +712,10 @@ e1/urw/courier/ucrr8a.pfb></usr/share/texmf-dist/fonts/type1/urw/helvetic/uhvb8
 a.pfb></usr/share/texmf-dist/fonts/type1/urw/times/utmb8a.pfb></usr/share/texmf
 -dist/fonts/type1/urw/times/utmr8a.pfb></usr/share/texmf-dist/fonts/type1/urw/t
 imes/utmri8a.pfb></usr/share/texmf-dist/fonts/type1/public/tipa/xipa10.pfb>
-Output written on paper.pdf (5 pages, 139680 bytes).
+Output written on paper.pdf (5 pages, 142887 bytes).
 PDF statistics:
- 149 PDF objects out of 1000 (max. 8388607)
- 116 compressed objects within 2 object streams
+ 151 PDF objects out of 1000 (max. 8388607)
+ 118 compressed objects within 2 object streams
  28 named destinations out of 1000 (max. 500000)
  1 words of extra memory for PDF output out of 10000 (max. 10000000)
 
