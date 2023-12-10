@@ -95,11 +95,14 @@ def build_training_data():
                 last_phone = phone_pattern
 
 if __name__ == "__main__":
-    print("beginning training")
-    data = list(build_training_data())
-
-    run_training(dec_model, data, 15)
-    torch.save(dec_model.state_dict(), "decoder.pt")
+    if os.path.exists("decoder.pt"):
+        dec_model.load_state_dict(torch.load("decoder.pt"))
+        dec_model.eval()
+    else:
+        print("beginning training")
+        data = list(build_training_data())
+        run_training(dec_model, data, 15)
+        torch.save(dec_model.state_dict(), "decoder.pt")
 
 
     with open("predictions.json") as f:
@@ -110,7 +113,7 @@ if __name__ == "__main__":
     acts = torch.FloatTensor(p["sg"])
 
     while len(phones) < 10:
-        next_phone = dec_model(torch.cat(acts, last_phone))
+        next_phone = dec_model(torch.cat((acts, last_phone)).to(device))
         idx = torch.argmax(next_phone)
         phone = all_phones[idx]
 
