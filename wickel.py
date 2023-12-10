@@ -1,4 +1,5 @@
 import csv
+import functools
 import itertools
 import random
 import os.path
@@ -161,9 +162,13 @@ wickelfeatures = list(all_wickelfeatures())
 feature_index_map = {f: i for i, f in enumerate(wickelfeatures)}
 
 
+@functools.total_ordering
 class WickelPhone:
     def __init__(self, first: str, second: str, third: str):
         self.phones = [first, second, third]
+
+    def __repr__(self):
+        return "{" + self.phones[0] + "}" + self.phones[1] + "{" + self.phones[2] + "}"
 
     def __hash__(self):
         return hash(self.__repr__())
@@ -173,10 +178,10 @@ class WickelPhone:
     
     def __str__(self):
         return self.__repr__()
-
-    def __repr__(self):
-        return "{" + self.phones[0] + "}" + self.phones[1] + "{" + self.phones[2] + "}"
-
+    
+    def __lt__(self, other):
+        return str(self) < str(other)
+    
     def activating_features(self):
         pre, central, post = [np.array(list(SegmentFeatures(p))) for p in self.phones]
 
@@ -215,9 +220,9 @@ def build_word_data():
         for row in csv.DictReader(file):
             yield (
                 row["title"],
-                xsampa_to_phones(cyrillic_to_xsampa(row["title"])),
-                xsampa_to_phones(cyrillic_to_xsampa(row["gen_sg"])),
-                xsampa_to_phones(cyrillic_to_xsampa(row["gen_pl"])),
+                list(xsampa_to_phones(cyrillic_to_xsampa(row["title"]))),
+                list(xsampa_to_phones(cyrillic_to_xsampa(row["gen_sg"]))),
+                list(xsampa_to_phones(cyrillic_to_xsampa(row["gen_pl"]))),
             )
 
 

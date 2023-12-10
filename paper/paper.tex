@@ -34,6 +34,8 @@
 
 \newcommand\BibTeX{B\textsc{ib}\TeX}
 
+\newcommand{\citenp}[1]{\citeauthor{#1} (\citeyear{#1})}
+
 \title{Instructions for ACL 2019 Proceedings}
 
 \author{George Vallejo \\
@@ -88,7 +90,7 @@ them to generalize the past tense for more verbs with greater accuracy.
 
 Prior research has attempted to create neural networks to function as
 language acquisition devices (LAD) in order to model how children acquire
-the English past tense. Most notably, Rumelhart and McClelland (1986)
+the English past tense. Most notably, \citenp{RMcC}
 made use of a perceptron model to model the learning of English past
 tense in three stages based on prior research into how children
 acquire it, and obtained learning results that very closely
@@ -113,7 +115,7 @@ Russian, being a member of the Slavic branch of the Indo-European languages,
 has a fully functioning grammatical case system which is used for all nouns
 unlike English. Nouns and noun modifiers in Russian inflect for case
 by changing the ending of the word, and the exact manner by which an ending
-changes depends on the ending, case, and number of the noun. Table 1 shows 
+changes depends on the ending, case, and number of the noun. Table \ref{declension} shows 
 the different possible endings of the Russian nominative and genitive cases in 
 the singular and plural. 
 
@@ -161,9 +163,9 @@ the ending of the noun, but also its gender and animacy.
 
 \section{Featural representation of Russian phonemes}
 
-Rumelhart and McClelland (1986) made use of a scheme to encode
+\citenp{RMcC} made use of a scheme to encode
 English phoneme units, known as Wickelphones and Wickelfeatures, described
-in Wickelgren (1969). Wickelphones are phoneme units representing
+in \citenp{Wickelgren}. Wickelphones are phoneme units representing
 each phone in a word as triples, which consist of the phoneme itself,
 its predecessor to the left, and its successor on the right.
 Wickelfeatures are a means of representing Wickelphones as distributed
@@ -209,7 +211,7 @@ in complementary distribution in all other environments. Likewise, because
 the velar consonants are normally only palatalized following front vowels,
 there is no need to account for such redundant information.
 
-Table 2 shows the scheme that we used to categorize Russian phonemes
+Table \ref{phonemes} shows the scheme that we used to categorize Russian phonemes
 on five simple dimensions.
 
 \begin{table*}[t!]
@@ -226,7 +228,7 @@ on five simple dimensions.
     \multirow{2}{50px}{Vowel} & Close & - & - & i & - & - & - & - & - & - & - & u & -\\
                               & Open & - & - & e & - & - & - & a & - & - & - & o & -\\
 \end{tabular}
-\caption{Categorization of Russian phonemes on five dimensions.
+\caption{\label{phonemes} Categorization of Russian phonemes on five dimensions.
 All phonemes are written using X-SAMPA.}
 \end{table*}
 
@@ -277,12 +279,67 @@ Because the Russian alphabet is much more phonemically consistent than English,
 meaning it is possible to derive a word's phonemic representation by iterating
 through its Cyrillic representation one letter at a time.
 
-% TODO: explain this better
-After being converted into X-SAMPA, each phoneme would then be converted into
-its Wickelphone/Wickelfeature representations.
+However, phonemic representations are not specific enough for the neural network.
+As previously referenced, \citenp{RMcC} refer to \citenp{Wickelgren}
+to devise a featurization system using Wickelphones and Wickelfeatures.
+In particular, each Wickelphone has a set of at most 25 Wickelfeatures that its presence activates,
+which are derived from the phonological features of all three phonemes present in the Wickelphone.
 
-The Wickelfeatures would then be converted into arrays of activations for
-certain features. 
+For all phonemes other than the special word-boundary marker (which has a single unique `boundary' feature),
+each phoneme has five features that correspond to the dimensions outlined in Table \ref{phonemes}.
+For each feature in the central phoneme of the Wickelphone, at most five Wickelfeatures are generated:
+each feature in the left context phoneme, the selected feature of the central phoneme,
+and each feature in the right context. An example of this for the Wickelphone
+\textbf{\textsubscript{j}a\textsubscript{z}} is present in Table \ref{features}.
+Computationally, this algorithm corresponds well to a series of vector repetitions and a matrix transposition.
+
+Each of these activated Wickelfeatures are then ``blurred": for a Wickelfeature $\left< f_1, f_2, f_3 \right>$,
+all Wickelfeatures of the form $\left< * , f_2, f_3 \right>$ and $\left< f_1, f_2, * \right>$ have a random chance of being activated
+as well. \citenp{RMcC} claim that this improves the neural network's ability to generalize between
+phonological features.
+
+However, to avoid computational blowup, Wickelfeatures with different dimensions for their left and right features
+(other than the special word boundary feature) are filtered out of the computation. This brings the total number
+of possible Wickelfeatures down from 2028 to only 660.
+
+Activations across Wickelfeatures are thus represented by a boolean 660-vector, where a 1 in index $k$ corresponds to
+Wickelfeature $k$ being activated. A word's total activation is all the Wickelfeatures activated by the word's composite Wickelphones. This is easily implemented with a vector sum operation.
+
+\begin{table}[t!]
+\begin{center}
+	\small
+\begin{tabular}{r|c|c|c}
+	\# & Left Context & Central Phoneme & Right Context \\ \hline
+	1 & Continuous & Vowel & Continuous \\
+	2 & Liquid & Vowel & Fricative \\
+	3 & Back & Vowel & Middle \\
+	4 & Voiced & Vowel & Voiced \\
+	5 & Soft & Vowel & Hard \\
+	6 & Continuous & Open & Continuous \\
+	7 & Liquid & Open & Fricative \\
+	8 & Back & Open & Middle \\
+	9 & Voiced & Open & Voiced \\
+	10 & Soft & Open & Hard \\
+	11 & Continuous & Middle & Continuous \\
+	12 & Liquid & Middle & Fricative \\
+	13 & Back & Middle & Middle \\
+	14 & Voiced & Middle & Voiced \\
+	15 & Soft & Middle & Hard \\
+	16 & Continuous & Voiced & Continuous \\
+	17 & Liquid & Voiced & Fricative \\
+	18 & Back & Voiced & Middle \\
+	19 & Voiced & Voiced & Voiced \\
+	20 & Soft & Voiced & Hard \\
+	21 & Continuous & Hard & Continuous \\
+	22 & Liquid & Hard & Fricative \\
+	23 & Back & Hard & Middle \\
+	24 & Voiced & Hard & Voiced \\
+	25 & Soft & Hard & Hard \\
+\end{tabular}
+\end{center}
+\caption{\label{features} The Wickelfeatures activated by the Wickelphone
+		                  \textbf{\textsubscript{j}a\textsubscript{z}}.}
+\end{table}
 
 \subsection{Neural network}
 
@@ -294,30 +351,44 @@ that can be activated for, depending on whether the model is one of the
 two smaller models learning individual genitive cases or the larger model
 learning both genitive cases.
 
-\textbf{Citations}: Citations within the text appear in parentheses
-as~\cite{Gusfield:97} or, if the author's name appears in the text
-itself, as Gusfield~\shortcite{Gusfield:97}.
-Using the provided \LaTeX\ style, the former is accomplished using
-{\small\verb|\cite|} and the latter with {\small\verb|\shortcite|} or {\small\verb|\newcite|}. Collapse multiple citations as in~\cite{Gusfield:97,Aho:72}; this is accomplished with the provided style using commas within the {\small\verb|\cite|} command, \emph{e.g.}, {\small\verb|\cite{Gusfield:97,Aho:72}|}. Append lowercase letters to the year in cases of ambiguities.  
- Treat double authors as
-in~\cite{Aho:72}, but write as in~\cite{Chandra:81} when more than two
-authors are involved. Collapse multiple citations as
-in~\cite{Gusfield:97,Aho:72}. Also refrain from using full citations
-as sentence constituents.
+During training, the network's input is the activation vector for the nominative singular form
+of a noun, and the expected output is the activation vector for that noun's genitive form
+(singular or plural, depending on the network being trained). However, the larger model attempting
+to learn both cases at once simply has the singular and plural genitive activation vectors concatenated together,
+with the intent being that the model will eventually output two ``words" at once.
 
-\section*{Acknowledgments}
+\subsection{Decoding model output}
+Described in the Appendix of their paper, \citenp{RMcC} use what they term a ``binding network" to decode the feature activation vectors
+outputted by the learning network into a full phonological representation. Because the activation
+vector encoding scheme has no representation of the temporal dimension of a word (i.e., it does
+not directly encode \textit{where} features and source phonemes occur in the source word), a separate
+decoder is necessary. The binding network does not learn its weights, but rather each weight is determined
+by the strength of its previous output ``in time", proportional to the probability of the corresponding feature
+being activated (i.e., the network output).
 
-The acknowledgments should go immediately before the references.  Do
-not number the acknowledgments section. Do not include this section
-when submitting your paper for review. \\
+The network attempts to model how each Wickelphone contributes to the Wickelfeatures present in the activation
+vector, with the idea being ``to find a set of output features [Wickelphones] that accounts for as many as possible of the output features while minimizing the number of input features [Wickelfeatures] accounted for by more than one output feature. Thus, we want each of the output features to \textit{compete} for input features" \cite[pp. 269]{RMcC}.
 
-\noindent \textbf{Preparing References:} \\
-Include your own bib file like this:
-\verb|\bibliographystyle{acl_natbib}|
-\verb|\bibliography{acl2019}| 
+\section{Results}
+Unfortunately, our results were decidedly inconclusive.
+The neural networks did successfully learn during training,
+with a final loss of approximately 0.1 (down from 0.16 after 100 epochs).
+However, the decoder network did not work as hoped, and only output two Wickelphones
+when given output from any of the neural networks. For example, when given the network predicted activations
+for the input \foreignlanguage{russian}{язык} (X-SAMPA \textbf{jazik}), the decoder only ever output
+the Wickelphones \textbf{\textsubscript{\#}j\textsubscript{a}} and \textbf{\textsubscript{j}a\textsubscript{\#}};
+for the input \foreignlanguage{russian}{жена} (X-SAMPA \textbf{z'ena}), the decoder only returned \textbf{\textsubscript{\#}z'\textsubscript{e}} and \textbf{\textsubscript{z'}e\textsubscript{\#}}.
 
-where \verb|acl2019| corresponds to a acl2019.bib file.
-\bibliography{acl2019}
+
+\subsection{Discussion}
+These results seem to suggest that a featural representation of words that properly preserves temporal
+information is necessary to get meaningful output from these models. It is also possible that the
+specification for the binding network in \citenp{RMcC} was overly general, and thus some nuance in implementation
+may have been missed.
+
+\section{Conclusion}
+
+\bibliography{paper}{}
 \bibliographystyle{acl_natbib}
 
 \appendix

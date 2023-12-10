@@ -7,7 +7,13 @@ import torch.nn as nn
 import torch.optim as optim
 
 from xsampa import cyrillic_to_xsampa
-from wickel import WickelPhone, xsampa_to_phones, wickelfeatures, feature_index_map, build_word_data
+from wickel import (
+    WickelPhone,
+    xsampa_to_phones,
+    wickelfeatures,
+    feature_index_map,
+    build_word_data,
+)
 
 
 def activations_for_phone(phone: WickelPhone):
@@ -49,15 +55,21 @@ class Net(nn.Module):
         return x
 
 
-net_gen_sg = Net()
-net_gen_pl = Net()
-net_both = Net(output_multiplier=2)
+if torch.cuda.is_available():
+    dev = "cuda"
+else:
+    dev = "cpu"
+device = torch.device(dev)
 
-loss_criterion = nn.L1Loss()
+net_gen_sg = Net().to(device)
+net_gen_pl = Net().to(device)
+net_both = Net(output_multiplier=2).to(device)
+
+loss_criterion = nn.L1Loss().to(device)
 
 
 def run_training(model, mapping_pairs, num_epochs):
-    optimizer = optim.SGD(model.parameters(), lr=10.0)
+    optimizer = optim.SGD(model.parameters(), lr=15.0)
 
     for epoch in range(num_epochs):
         for input_rep, target_rep in mapping_pairs:
@@ -90,17 +102,26 @@ def build_activations():
             print(f"built activations for {word}")
 
             words[word] = {
-                "nom_sg": nom_act.tolist(),
-                "gen_sg": sg_act.tolist(),
-                "gen_pl": pl_act.tolist(),
+                "nom_sg": {
+                    "phones": [str(p) for p in nom],
+                    "activations": nom_act.tolist(),
+                },
+                "gen_sg": {
+                    "phones": [str(p) for p in sg],
+                    "activations": sg_act.tolist(),
+                },
+                "gen_pl": {
+                    "phones": [str(p) for p in pl],
+                    "activations": pl_act.tolist(),
+                },
             }
         with open("activations.json", "w") as f:
             json.dump(words, f)
 
     for acts in words.values():
-        yield torch.FloatTensor(acts["nom_sg"]), torch.FloatTensor(
-            acts["gen_sg"]
-        ), torch.FloatTensor(acts["gen_pl"])
+        yield torch.FloatTensor(acts["nom_sg"]["activations"]), torch.FloatTensor(
+            acts["gen_sg"]["activations"]
+        ), torch.FloatTensor(acts["gen_pl"]["activations"])
 
 
 if __name__ == "__main__":
@@ -109,20 +130,26 @@ if __name__ == "__main__":
     both_maps = []
 
     for nom_act, sg_act, pl_act in build_activations():
-        sg_maps.append((nom_act, sg_act))
-        pl_maps.append((nom_act, pl_act))
-        both_maps.append((nom_act, torch.cat((sg_act, pl_act))))
+        sg_maps.append((nom_act.to(device), sg_act.to(device)))
+        pl_maps.append((nom_act.to(device), pl_act.to(device)))
+        both_maps.append((nom_act.to(device), torch.cat((sg_act, pl_act)).to(device)))
+
+    # TODO: start train/test splitting to check for overfitting
 
     print("beginning training...")
-    run_training(net_gen_sg, sg_maps, 10)
+    run_training(net_gen_sg, sg_maps, 100)
+    torch.save(net_gen_sg.state_dict(), "sg.pt")
     print("trained singular model")
-    run_training(net_gen_pl, pl_maps, 10)
+    run_training(net_gen_pl, pl_maps, 100)
+    torch.save(net_gen_pl.state_dict(), "pl.pt")
     print("trained plural model")
-    run_training(net_both, both_maps, 10)
-    print("trained dual model")
+    run_training(net_both, both_maps, 100)
+    torch.save(net_gen_sg.state_dict(), "both.pt")
 
-    test_word = "язык"
-    test_input = torch.from_numpy(activations_for_word(xsampa_to_phones(cyrillic_to_xsampa(test_word))))
+    test_word = "жена"
+    test_input = torch.from_numpy(
+        activations_for_word(xsampa_to_phones(cyrillic_to_xsampa(test_word)))
+    ).to(device)
 
     predicted_sg = net_gen_sg(test_input)
     print("Singular model output:", predicted_sg)
@@ -133,9 +160,12 @@ if __name__ == "__main__":
 
     both_list = predicted_both.tolist()
     with open("predictions.json", "w") as f:
-        json.dump({
-            "sg": predicted_sg.tolist(),
-            "pl": predicted_pl.tolist(),
-            "both_sg": both_list[:len(wickelfeatures)],
-            "both_pl": both_list[len(wickelfeatures):]
-        }, f)
+        json.dump(
+            {
+                "sg": predicted_sg.tolist(),
+                "pl": predicted_pl.tolist(),
+                "both_sg": both_list[: len(wickelfeatures)],
+                "both_pl": both_list[len(wickelfeatures) :],
+            },
+            f,
+        )
