@@ -1,3 +1,4 @@
+import itertools
 import json
 import os.path
 
@@ -5,6 +6,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
+from torch.utils.data import DataLoader
 
 from wickel import (
     WickelPhone,
@@ -53,21 +55,19 @@ dec_model = Decoder().to(device)
 
 loss_criterion = nn.L1Loss().to(device)
 
+BATCH_SIZE = 16 * 1024
 
 def run_training(model, mapping_pairs, num_epochs):
     optimizer = optim.SGD(model.parameters(), lr=0.1)
 
     for epoch in range(num_epochs):
-        for i, (input_rep, target_rep) in enumerate(mapping_pairs):
-            input_rep = input_rep.to(device).view(1, -1)
-            target_rep = target_rep.to(device).view(1, -1)
-
+        for i, (input_rep, target_rep) in enumerate(DataLoader(mapping_pairs, batch_size=BATCH_SIZE)):
             optimizer.zero_grad()
-            output = model(input_rep)
-            loss = loss_criterion(output, target_rep)
+            output = model(input_rep.to(device))
+            loss = loss_criterion(output, target_rep.to(device))
             loss.backward()
             optimizer.step()
-            print(f"trained {i + 1}/{len(mapping_pairs)}", end="\r")
+            print(f"trained {((i + 1) * BATCH_SIZE)}/{len(mapping_pairs)}", end="\r")
 
         print(f"loss at epoch {epoch}: {loss.item():.6f}")
 
@@ -99,9 +99,10 @@ if __name__ == "__main__":
         dec_model.load_state_dict(torch.load("decoder.pt"))
         dec_model.eval()
     else:
-        print("beginning training")
+        print("building data")
         data = list(build_training_data())
-        run_training(dec_model, data, 15)
+        print("beginning training")
+        run_training(dec_model, data, 50)
         torch.save(dec_model.state_dict(), "decoder.pt")
 
 

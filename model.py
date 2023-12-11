@@ -5,6 +5,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
+from torch.utils.data import DataLoader
 
 from xsampa import cyrillic_to_xsampa
 from wickel import (
@@ -67,15 +68,15 @@ net_both = Net(output_multiplier=2).to(device)
 
 loss_criterion = nn.L1Loss().to(device)
 
+BATCH_SIZE = 1024
 
 def run_training(model, mapping_pairs, num_epochs):
     optimizer = optim.SGD(model.parameters(), lr=15.0)
 
     for epoch in range(num_epochs):
-        for input_rep, target_rep in mapping_pairs:
-            # TODO: this is copied from the problem set, do we actually need it?
-            input_rep = input_rep.view(1, -1)
-            target_rep = target_rep.view(1, -1)
+        for input_rep, target_rep in DataLoader(mapping_pairs, batch_size=BATCH_SIZE):
+            input_rep = input_rep.to(device)
+            target_rep = target_rep.to(device)
 
             optimizer.zero_grad()
             output = model(input_rep)
@@ -130,9 +131,9 @@ if __name__ == "__main__":
     both_maps = []
 
     for nom_act, sg_act, pl_act in build_activations():
-        sg_maps.append((nom_act.to(device), sg_act.to(device)))
-        pl_maps.append((nom_act.to(device), pl_act.to(device)))
-        both_maps.append((nom_act.to(device), torch.cat((sg_act, pl_act)).to(device)))
+        sg_maps.append((nom_act, sg_act))
+        pl_maps.append((nom_act, pl_act))
+        both_maps.append((nom_act, torch.cat((sg_act, pl_act))))
 
     # TODO: start train/test splitting to check for overfitting
 
