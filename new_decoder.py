@@ -99,10 +99,8 @@ if __name__ == "__main__":
         dec_model.load_state_dict(torch.load("decoder.pt"))
         dec_model.eval()
     else:
-        print("building data")
-        data = list(build_training_data())
         print("beginning training")
-        run_training(dec_model, data, 50)
+        run_training(dec_model, build_training_data(), 50)
         torch.save(dec_model.state_dict(), "decoder.pt")
 
 
